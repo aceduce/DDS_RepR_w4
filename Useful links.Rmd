@@ -1,0 +1,19 @@
+---
+title: "Useful links"
+author: "Jie Yang"
+date: "October 10, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+```
+
+Tutorial is available at (also including the pipe concept the style)
+
+*http://genomicsclass.github.io/book/pages/dplyr_tutorial.html*
+

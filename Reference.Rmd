@@ -1,0 +1,26 @@
+---
+title: "Reference"
+author: "Jie Yang"
+date: "October 8, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Reference work
+
+*https://github.com/VectorPosse/repdata-005_Project_2/blob/master/repdata-005_Project_2.Rmd*
+
+*http://blog.revolutionanalytics.com/2014/07/magrittr-simplifying-r-code-with-pipes.html*
+
+*https://cran.r-project.org/web/packages/magrittr/vignettes/magrittr.html*
+
+*https://github.com/gregoryg/05-reproducible-research-assignment-2/blob/master/Project.Rmd*
+
+*https://github.com/sturrion/reproducible-research-course/blob/master/CourseProject2/StormAnalysis.Rmd*
+
+*https://github.com/dchen71/datasciencecoursera/blob/master/Reproducible%20Research/Project%202/project2.Rmd*
+
+

@@ -1,0 +1,196 @@
+---
+title: "Analysis on Storm Dataset"
+date: "October 8, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis 
+
+*Questions*
+
+Your data analysis must address the following questions:
+
+*1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+*2. Across the United States, which types of events have the greatest economic consequences?
+
+## Data Processing
+
+a. Load the data
+```{r cache = TRUE}
+
+rm(list = ls())
+#set working directory
+setwd("D:/Coursera/DS/Reproducible/DDS_RepR_w4")
+getwd()
+if(!file.exists("data")) {
+    dir.create("data")
+}
+#download and unzip, file handling
+
+fileURL<-"https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+download.file(fileURL, destfile="./StormData.csv.bz2")
+dt<-read.csv(paste(getwd(),"StormData.csv.bz2", sep="/"), stringsAsFactors = FALSE)
+```
+b. format and rename for convinence 
+From the names of column, we're interested in the crop and population damages, so we only subsect those data. Here I use `select()` and `filter()` to subsect the dataframe. Alternative could use `subset()`. Also, `%>%`is used as pipe coding style. 
+
+The list of them:
+
+* `EVTYPE`: the event type,
+* `BGN_DATE`: the date of the event,
+* `FATALITIES`: the number of fatalities that resulted,
+* `INJURIES`: the number of injuries that resulted,
+* `PROPDMG`: an estimate for the amount of property damage,
+* `PROPDMGEXP`: a "multiplier" extension for the amount in PROPDMG,
+* `CROPDMG`: an estimate for the amount of crop damage,
+* `CROPDMGEXP`: a "multiplier" extension for the amount in CROPDMG,
+* `REMARKS`: remarks added by the person recording the data.
+
+```{r echo=TRUE, warning=FALSE, cache=TRUE}
+names(dt)
+library("dplyr")
+#only choose the above columns 
+dt_sel <- dt %>%
+    select(EVTYPE, BGN_DATE, FATALITIES, INJURIES, PROPDMG, PROPDMGEXP,
+           CROPDMG, CROPDMGEXP, REMARKS)
+#format the date by as.Date()
+date_f<- dt_sel$BGN_DATE %>%
+    strsplit(" ") %>%   #separate by the " ": first element Date, second element time
+    unlist() %>%        #strsplit output list
+    matrix(nrow=dim(dt_sel)[1], byrow=TRUE)
+date_f<-as.Date(date_f[,1],format="%m/%d/%Y") #format the dates
+dt_sel$DATE<-date_f 
+dt_sel<-select(dt_sel,-BGN_DATE)  #remove the BGN_DATE, alternative is to overwrite this at the previous step
+```
+
+Let's look at the following variables:
+
+* `PROPDMG`: an estimate for the amount of property damage,
+* `PROPDMGEXP`: a "multiplier" extension for the amount in PROPDMG,
+* `CROPDMG`: an estimate for the amount of crop damage,
+* `CROPDMGEXP`: a "multiplier" extension for the amount in CROPDMG
+
+```{r}
+unique(dt_sel$PROPDMGEXP)
+unique(dt_sel$CROPDMGEXP)
+```
+Both the `*EXP` has different characters standing for different multipliers.
+Here we interprate the symbols as followings:
+
+`H/h` as 10<sup>2</sup>
+`K/k` as 10<sup>3</sup>
+`M/m` as 10<sup>6</sup>
+`B/b` as 10<sup>9</sup>
+
+Here, we use `switch()` function to translate the characters into numerical variables.
+```{r cache=TRUE}
+#use sapply to loop around to change the characters into factors
+prop_factor <- sapply(dt_sel$PROPDMGEXP,
+    function(x) {switch(x,  "k" = 1000, "K" = 1000,
+                            "m" = 1000000, "M" = 1000000, 
+                            "B" = 1000000000, "b"= 1000000000,
+                            "H"= 100, "h"=100, 1)})
+#compare the factor to verify if the translation is correct
+table(prop_factor)
+table(dt_sel$PROPDMGEXP)
+
+crop_factor <- sapply(dt_sel$CROPDMGEXP,
+    function(x) {switch(x,  "k" = 1000, "K" = 1000,
+                            "m" = 1000000, "M" = 1000000, 
+                            "B" = 1000000000, "b"= 1000000000,
+                            "H"= 100, "h"=100, 1)})
+table(crop_factor)
+table(dt_sel$CROPDMGEXP)
+#Multiply the numbers by the factors
+dt_sel_f<-dt_sel %>%
+    mutate(CROP_VAL=CROPDMG*crop_factor,PROP_VAL=PROPDMG*prop_factor )
+```
+
+Now, we finish the manipulation of the data, and begin to answer the two questions. 
+
+## Results
+
+**1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?**
+
+```{r cache=TRUE}
+#change all the events to upper case
+dt_sel_f$EVTYPE<-toupper(dt_sel_f$EVTYPE)
+dt_sel_f %>%
+    filter(EVTYPE!="?") %>% # filter out one event called "?"
+    group_by(EVTYPE) %>%
+    summarise(Death=sum(FATALITIES), Injury=sum(INJURIES), Property_value=sum(PROP_VAL), Crop_Value=sum(CROP_VAL))
+```
+
+*one should be able to futher compact the list as a few events have similar names and referring to the same events*
+
+One can further examine the top ten events in each category
+```{r cache=TRUE}
+dt_sel_f %>%
+    select(EVTYPE, FATALITIES) %>%
+    group_by(EVTYPE) %>%
+    summarise(Death=sum(FATALITIES)) %>%
+    arrange(desc(Death)) %>%
+    head(10) 
+```
+
+From this list, one can see **TORNADO** is the most fatal event.
+
+```{r cache=TRUE}
+dt_sel_f %>%
+    select(EVTYPE, INJURIES) %>%
+    group_by(EVTYPE) %>%
+    summarise(Injury=sum(INJURIES)) %>%
+    arrange(desc(Injury)) %>%
+    head(10) 
+```
+From this list, one can see **TORNADO** is the event with most injuries.
+
+Let's do a plot for this question. 
+
+```{r cache=TRUE}
+
+dt_sel_f$YEAR<-as.character(format(dt_sel_f$DATE, "%Y"))
+tornadoes <- dt_sel_f %>%
+    filter(EVTYPE == "TORNADO") %>%
+    group_by(YEAR) %>%
+    summarize(Death = sum(FATALITIES), Injury = sum(INJURIES))
+
+par(mfrow=c(1,2))
+plot(tornadoes$YEAR,tornadoes$Death, xlab = "Year", ylab = "Death", main = "Tornado Death plot")
+plot(tornadoes$YEAR,tornadoes$Injury,xlab = "Year", ylab = "Injury", main = "Tornado Injury plot")
+```
+
+**2. Across the United States, which types of events have the greatest economic consequences?**
+
+Similar to the above plots, we can generate the table for CROP and PROPERTY DAMAGE VALUES
+```{r}
+#Property_value=sum(PROP_VAL), Crop_Value=sum(CROP_VAL)
+dt_sel_f %>%
+    select(EVTYPE, PROP_VAL) %>%
+    group_by(EVTYPE) %>%
+    summarise(Property_value=sum(PROP_VAL)) %>%
+    arrange(desc(Property_value)) %>%
+    head(10) 
+
+dt_sel_f %>%
+    select(EVTYPE, CROP_VAL) %>%
+    group_by(EVTYPE) %>%
+    summarise(Crop_Value=sum(CROP_VAL)) %>%
+    arrange(desc(Crop_Value)) %>%
+    head(10) 
+
+```
+
+In term of property value, FLOOD is the most costly one. 
+In term of the crops values, DROUGH is the one.
+
+## Data source
+
+https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2
+
+
