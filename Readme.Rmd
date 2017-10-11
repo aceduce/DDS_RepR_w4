@@ -1,0 +1,10 @@
+---
+title: "Readme"
+author: "Jie Yang"
+date: "October 11, 2017"
+output: html_document
+---
+
+The code is available in the Reference.Rmd [https://github.com/aceduce/DDS_RepR_w4/blob/master/Reference.Rmd]
+
+The Rpub is at http://rpubs.com/aceduce/317171
